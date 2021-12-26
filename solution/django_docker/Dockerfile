@@ -1,18 +1,21 @@
-FROM python:3.8-alpine
+FROM python:3.10.1-slim-buster
 
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
 WORKDIR /opt/
 
-# install psycopg2 dependencies
-RUN apk update \
-    && apk add postgresql-dev gcc python3-dev musl-dev
-
 COPY requirements.txt .
 RUN pip install --upgrade pip && \
     pip install -r requirements.txt
 
 COPY . .
-ENTRYPOINT ["sh", "entrypoint.sh"]
+
+# Заглушка на SECRET_KEY, чтобы отработал collectstatic
+ARG SECRET_KEY=stub
+# Сбор статических файлов
+RUN set -e; [ $(ls -A staticfiles) ] || python manage.py collectstatic
+
+EXPOSE 8000
+CMD ["gunicorn", "config.wsgi:application", "application", "--bind", "0.0.0.0:8000"]
 
